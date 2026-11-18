@@ -117,20 +117,32 @@ npm run dev -- --port 5200
 
 ## 构建与部署
 
+### Cloudflare Workers（前端 + Atomflow 代理，单 Worker）
+
+此 Fork 使用根目录 `wrangler.jsonc`，通过 Workers Static Assets 托管 `dist/`，并将 `/__opc-image/*` 请求交给 `worker/site.ts`。复用 `worker/src/index.ts` 中限制上游、请求方法、来源及请求体大小的代理实现。
+
 ```sh
+npm ci
+npm test
 npm run build
+npm run site:check
+npx wrangler deploy
 ```
 
-将 `dist/` 部署到任意静态托管平台即可。正式站点为 [omilic.com](https://omilic.com/)，GitHub Pages 作为备用部署。
+在 Cloudflare Git 集成的构建设置里，构建命令填 `npm run build`，部署命令填 `npx wrangler deploy`。不再需要 `--assets`、`--name` 或 `--compatibility-date` 参数，均由根目录配置负责。
 
-Atomflow 线上代理位于 `worker/`，只接受允许的站点来源并转发固定 Atomflow 图片编辑端点，不保存密钥或图片：
+提交的 `.env.production` 将 `VITE_IMAGE_PROXY_URL` 默认设为 `/__opc-image`（同源路径），无需配置独立代理域名。自定义兼容接口和 OpenWego 仍由浏览器直连，API Key 不存储在 Worker 中。GitHub Pages 的 CI 可以通过构建环境变量覆盖此默认值；如在其他静态托管环境部署，需要单独指定代理 URL 或禁用同源代理。
+
+### 独立部署方式（保留供其他静态站点使用）
+
+`worker/wrangler.jsonc` 仍可独立部署 Atomflow 代理：
 
 ```sh
 npm run worker:check
 npm run worker:deploy
 ```
 
-部署后可通过 `VITE_IMAGE_PROXY_URL` 配置 Worker 地址；未配置时会回退为浏览器直连。自定义兼容接口始终由浏览器直连。
+独立代理需设置允许访问的站点 Origin，并将 `VITE_IMAGE_PROXY_URL` 设为独立 Worker 的 HTTPS URL。
 
 ## 数据与来源
 

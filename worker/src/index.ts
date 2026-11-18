@@ -38,7 +38,9 @@ export async function handleImageProxy(
   if (!upstream || url.search || url.hash) return errorResponse(404, 'not_found');
 
   const origin = request.headers.get('Origin') || '';
-  if (!ALLOWED_ORIGINS.has(origin)) return errorResponse(403, 'origin_not_allowed');
+  // Allow the deployment's own Origin (workers.dev or custom domain) without an open proxy.
+  if (!ALLOWED_ORIGINS.has(origin) && origin !== url.origin)
+    return errorResponse(403, 'origin_not_allowed');
 
   if (request.method === 'OPTIONS')
     return new Response(null, { status: 204, headers: corsHeaders(origin) });

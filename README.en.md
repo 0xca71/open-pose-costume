@@ -112,20 +112,32 @@ Built with **React 19 · TypeScript · Vite · Lucide**.
 
 ## Build and Deploy
 
+### Cloudflare Workers (single Worker with UI and Atomflow proxy)
+
+The fork's root `wrangler.jsonc` serves `dist/` using Workers Static Assets. It routes `/__opc-image/*` to `worker/site.ts`, reusing the fixed-upstream proxy in `worker/src/index.ts` with its origin, method, bearer-token, and request-size checks.
+
 ```sh
+npm ci
+npm test
 npm run build
+npm run site:check
+npx wrangler deploy
 ```
 
-Deploy `dist/` to any static host. The production site is [omilic.com](https://omilic.com/), with GitHub Pages retained as a fallback.
+For Cloudflare's connected Git build, set the build command to `npm run build` and the deploy command to `npx wrangler deploy`. The root configuration supplies the worker name, assets, and compatibility date.
 
-The production Atomflow proxy lives in `worker/`. It accepts only allowed site origins, forwards fixed Atomflow image-edit endpoints, and stores neither keys nor images:
+Committed `.env.production` sets `VITE_IMAGE_PROXY_URL=/__opc-image` for same-origin requests, with no separate proxy hostname required. Custom compatible endpoints and OpenWego are still called directly; API keys are not stored in the Worker. The GitHub Pages CI can override this default using the build environment variable. For other static hosts, supply an appropriate proxy URL or disable the same-origin proxy.
+
+### Optional separate image proxy
+
+The original `worker/wrangler.jsonc` remains available when hosting the frontend elsewhere:
 
 ```sh
 npm run worker:check
 npm run worker:deploy
 ```
 
-Configure the Worker through `VITE_IMAGE_PROXY_URL`. Without it, production falls back to direct browser requests. Custom compatible endpoints are always called directly.
+Configure the allowed frontend origin(s) and set `VITE_IMAGE_PROXY_URL` to the independent Worker's HTTPS URL.
 
 ## Data and Sources
 

@@ -23,6 +23,18 @@ test('worker preflight explicitly permits authorization from the production site
   assert.equal(response.headers.get('Access-Control-Allow-Methods'), 'POST, OPTIONS');
 });
 
+test('worker permits a same-origin request on its own custom domain', async () => {
+  const origin = 'https://open-pose-costume.example.workers.dev';
+  const response = await handleImageProxy(
+    new Request(`${origin}/site/v1/images/edits`, {
+      method: 'OPTIONS',
+      headers: { Origin: origin },
+    }),
+  );
+  assert.equal(response.status, 204);
+  assert.equal(response.headers.get('Access-Control-Allow-Origin'), origin);
+});
+
 test('worker rejects unknown routes, foreign origins and oversized requests', async () => {
   assert.equal(
     (

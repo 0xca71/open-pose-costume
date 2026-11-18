@@ -34,6 +34,14 @@ test('only the two exact Atomflow edit endpoints use the development transport',
 test('production transport uses the configured proxy only for exact Atomflow endpoints', () => {
   const proxy = 'https://open-pose-costume-image-proxy.example.workers.dev';
   assert.equal(
+    imageRequestEndpoint('https://atomflow.vip/v1/images/edits', false, '/__opc-image'),
+    '/__opc-image/site/v1/images/edits',
+  );
+  assert.equal(
+    imageRequestEndpoint('https://api.atomflow.vip/v1/images/edits', false, '/__opc-image'),
+    '/__opc-image/api/v1/images/edits',
+  );
+  assert.equal(
     imageRequestEndpoint('https://atomflow.vip/v1/images/edits', false, proxy),
     `${proxy}/site/v1/images/edits`,
   );

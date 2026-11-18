@@ -18,8 +18,10 @@ export function imageRequestEndpoint(
   const route = atomflowRoute(endpoint);
   if (!route) return endpoint;
   if (development) return `/__opc-image/${route}/v1/images/edits`;
-  if (!productionProxy.trim()) return endpoint;
-  const proxy = new URL(productionProxy.trim());
+  const destination = productionProxy.trim();
+  if (!destination) return endpoint;
+  if (destination === '/__opc-image') return `/__opc-image/${route}/v1/images/edits`;
+  const proxy = new URL(destination);
   if (proxy.protocol !== 'https:' || proxy.username || proxy.password || proxy.search || proxy.hash)
     throw new Error('invalidProxyEndpoint');
   const pathname = proxy.pathname.replace(/\/+$/, '');

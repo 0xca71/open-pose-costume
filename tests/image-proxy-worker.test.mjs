@@ -141,3 +141,90 @@ test('OpenWego routes to the fixed upstream, not an arbitrary URL', async () => 
   assert.equal(response.status, 200);
   assert.equal(destination, 'https://openwego.com/v1/images/edits');
 });
+
+test('custom provider safely forwards a public HTTPS image edit endpoint', async () => {
+  const origin = 'https://open-pose-costume.example.workers.dev';
+  const target = 'https://api.provider.example.org/custom/v1/images/edits';
+  const form = new FormData();
+  form.set('model', 'test');
+  const request = new Request(
+    `${origin}/custom/v1/images/edits?target=${encodeURIComponent(target)}`,
+    {
+      method: 'POST',
+      headers: { Origin: origin, Authorization: 'Bearer test-only', Cookie: 'session=secret' },
+      body: form,
+    },
+  );
+  const originalBytes = Buffer.from(await request.clone().arrayBuffer());
+  let forwarded = false;
+  const response = await handleImageProxy(request, async (input, init) => {
+    forwarded = true;
+    assert.equal(String(input), target);
+    assert.equal(init.redirect, 'manual');
+    assert.equal(new Headers(init.headers).get('Authorization'), 'Bearer test-only');
+    assert.equal(new Headers(init.headers).get('Cookie'), null);
+    assert.deepEqual(Buffer.from(await new Response(init.body).arrayBuffer()), originalBytes);
+    return Response.json({ data: [] });
+  });
+  assert.equal(response.status, 200);
+  assert.equal(forwarded, true);
+});
+
+test('custom provider rejects private, ambiguous and non-image upstream URLs', async () => {
+  const origin = 'https://open-pose-costume.example.workers.dev';
+  const denied = [
+    'http://provider.example.org/v1/images/edits',
+    'https://localhost/v1/images/edits',
+    'https://127.0.0.1/v1/images/edits',
+    'https://127.1/v1/images/edits',
+    'https://[::1]/v1/images/edits',
+    'https://192.168.1.2/v1/images/edits',
+    'https://169.254.169.254/v1/images/edits',
+    'https://10.7.0.1/v1/images/edits',
+    'https://myserver.local/v1/images/edits',
+    'https://service.internal/v1/images/edits',
+    'https://localhost.nip.io/v1/images/edits',
+    'https://provider.example.org:8443/v1/images/edits',
+    'https://user:password@provider.example.org/v1/images/edits',
+    'https://provider.example.org/admin',
+    'https://provider.example.org/v1/images/edits?secret=1',
+    'https://provider.example.org/v1/images/edits#fragment',
+  ];
+  for (const target of denied) {
+    const request = new Request(
+      `${origin}/custom/v1/images/edits?target=${encodeURIComponent(target)}`,
+      { method: 'OPTIONS', headers: { Origin: origin } },
+    );
+    const result = await handleImageProxy(request, async () => {
+      throw Error('invalid destination must not be fetched');
+    });
+    assert.equal(result.status, 400, target);
+  }
+  for (const suffix of ['?target=https%3A%2F%2Fgood.example.org%2Fv1%2Fimages%2Fedits&extra=1', '?target=1&target=2', '']) {
+    const response = await handleImageProxy(
+      new Request(`${origin}/custom/v1/images/edits${suffix}`, {
+        method: 'OPTIONS', headers: { Origin: origin },
+      }),
+    );
+    assert.equal(response.status, 400);
+  }
+});
+
+test('custom provider retains same-origin, bearer auth and method protections', async () => {
+  const origin = 'https://open-pose-costume.example.workers.dev';
+  const target = 'https://api.provider.example.org/v1/images/edits';
+  const url = `${origin}/custom/v1/images/edits?target=${encodeURIComponent(target)}`;
+  const foreign = await handleImageProxy(new Request(url, {
+    method: 'OPTIONS', headers: { Origin: 'https://attacker.example' },
+  }));
+  assert.equal(foreign.status, 403);
+  const missingAuth = await handleImageProxy(new Request(url, {
+    method: 'POST', headers: { Origin: origin, 'Content-Type': 'multipart/form-data; boundary=test' },
+    body: '--test--',
+  }));
+  assert.equal(missingAuth.status, 401);
+  const forbiddenMethod = await handleImageProxy(new Request(url, {
+    method: 'GET', headers: { Origin: origin },
+  }));
+  assert.equal(forbiddenMethod.status, 405);
+});

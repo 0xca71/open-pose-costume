@@ -11,6 +11,48 @@ const UPSTREAMS = new Map([
 
 const MAX_REQUEST_BYTES = 96 * 1024 * 1024;
 
+/**
+ * Never trust a caller-supplied upstream without restricting both its host and path.
+ * Custom providers must be public DNS hostnames, HTTPS on the default port,
+ * and expose an OpenAI-compatible /v1/images/edits endpoint.
+ * Do not accept IP literals, local aliases, credentials, queries or redirects.
+ * For public sites, apply Cloudflare rate limits and optionally an account-level
+ * egress/host allowlist as extra protection against proxy abuse.
+ */
+function customUpstream(requestUrl: URL): string | null {
+  if (requestUrl.pathname !== '/custom/v1/images/edits') return null;
+  if (requestUrl.searchParams.size !== 1 || requestUrl.searchParams.getAll('target').length !== 1)
+    return null;
+  const target = requestUrl.searchParams.get('target');
+  if (!target || target.length > 2048) return null;
+
+  let url: URL;
+  try {
+    url = new URL(target);
+  } catch {
+    return null;
+  }
+
+  if (
+    url.protocol !== 'https:' ||
+    url.username || url.password || url.port || url.search || url.hash ||
+    !/^\/(?:[a-zA-Z0-9._~-]+\/)*v1\/images\/edits$/.test(url.pathname)
+  ) return null;
+
+  const host = url.hostname.toLowerCase();
+  // URL normalizes alternate IP forms like 127.1 and 0x7f000001; reject IP literals entirely.
+  if (
+    host.length > 253 ||
+    host.includes(':') ||
+    /^\d+(?:\.\d+)*$/.test(host) ||
+    !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(host) ||
+    /(?:^|\.)(?:localhost|local|internal|lan|home|test|invalid|example|onion|arpa)$/.test(host) ||
+    /(?:^|\.)(?:nip\.io|sslip\.io|localtest\.me|lvh\.me)$/.test(host)
+  ) return null;
+
+  return url.href;
+}
+
 function corsHeaders(origin: string): Headers {
   return new Headers({
     'Access-Control-Allow-Origin': origin,
@@ -35,8 +77,10 @@ export async function handleImageProxy(
   fetcher: typeof fetch = fetch,
 ): Promise<Response> {
   const url = new URL(request.url);
-  const upstream = UPSTREAMS.get(url.pathname);
-  if (!upstream || url.search || url.hash) return errorResponse(404, 'not_found');
+  const isCustom = url.pathname === '/custom/v1/images/edits';
+  const upstream = isCustom ? customUpstream(url) : UPSTREAMS.get(url.pathname);
+  if (!upstream) return errorResponse(isCustom ? 400 : 404, isCustom ? 'invalid_target' : 'not_found');
+  if (!isCustom && (url.search || url.hash)) return errorResponse(404, 'not_found');
 
   const origin = request.headers.get('Origin') || '';
   // Allow the deployment's own Origin (workers.dev or custom domain) without an open proxy.

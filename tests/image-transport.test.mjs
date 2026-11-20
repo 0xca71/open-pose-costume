@@ -59,7 +59,7 @@ test('production transport uses the configured proxy only for exact Atomflow end
   );
   assert.equal(
     imageRequestEndpoint('https://images.example/v1/images/edits', false, proxy),
-    'https://images.example/v1/images/edits',
+    `${proxy}/custom/v1/images/edits?target=${encodeURIComponent('https://images.example/v1/images/edits')}`,
   );
   assert.equal(
     imageRequestEndpoint('https://atomflow.vip/v1/images/edits', false, 'direct'),
@@ -77,6 +77,20 @@ test('production transport uses the configured proxy only for exact Atomflow end
     () =>
       imageRequestEndpoint('https://atomflow.vip/v1/images/edits', false, 'http://proxy.example'),
     /invalidProxyEndpoint/,
+  );
+});
+
+test('custom provider routes through the same-origin Worker by default', () => {
+  const url = 'https://images.vendor.example.org/api/v1/images/edits';
+  const encoded = `/__opc-image/custom/v1/images/edits?target=${encodeURIComponent(url)}`;
+  assert.equal(imageRequestEndpoint(url, false), encoded);
+  assert.equal(imageRequestEndpoint(url, false, '/__opc-image'), encoded);
+  assert.equal(imageRequestEndpoint(url, false, 'direct'), url);
+  // The Vite development server does not yet implement the dynamic route.
+  assert.equal(imageRequestEndpoint(url, true), url);
+  assert.equal(
+    imageRequestEndpoint(url, false, 'https://proxy.example.workers.dev'),
+    `https://proxy.example.workers.dev/custom/v1/images/edits?target=${encodeURIComponent(url)}`,
   );
 });
 

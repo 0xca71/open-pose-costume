@@ -70,7 +70,7 @@ Before generation, select a viewpoint, visual style and optional instructions. S
 ## Generation and Privacy
 
 - In the single Cloudflare Worker deployment, OpenWego and default Atomflow image edits use the same-origin fixed-provider proxy. API keys are forwarded in the request header and never persisted by the Worker.
-- Local development proxies fixed providers through Vite; production uses the restricted Cloudflare Worker by default. Custom compatible endpoints are called directly and must provide correct CORS headers.
+- Local Vite development proxies fixed providers; the production Cloudflare Worker proxies OpenWego, Atomflow, and custom OpenAI-compatible image edit endpoints. Custom providers must use public HTTPS DNS hostnames and `/v1/images/edits`; private IPs, alternate ports, and redirects are rejected.
 - API keys are stored locally in this browser by default. Disable “Remember key” to keep a key only for the current session; settings can be cleared at any time.
 - Generation and outfit extraction send the selected references and instructions to the configured provider. Provider pricing, quotas and moderation policies apply.
 - Successful generation history is stored locally in IndexedDB. The UI keeps the latest 20 results and never stores API keys in history.
@@ -126,7 +126,7 @@ npx wrangler deploy
 
 For Cloudflare's connected Git build, set the build command to `npm run build` and the deploy command to `npx wrangler deploy`. The root configuration supplies the worker name, assets, and compatibility date.
 
-Committed `.env.production` sets `VITE_IMAGE_PROXY_URL=/__opc-image` for same-origin requests, with no separate proxy hostname required. Even when the build variable is missing, known OpenWego and Atomflow endpoints use the same-origin proxy instead of silently falling back to direct connections. Custom compatible endpoints remain direct; API keys are not stored in the Worker. Set `VITE_IMAGE_PROXY_URL=direct` at build time to opt out explicitly. The GitHub Pages CI can override this default using the build environment variable. For other static hosts, supply an appropriate proxy URL or disable the same-origin proxy.
+Committed `.env.production` sets `VITE_IMAGE_PROXY_URL=/__opc-image` for same-origin requests, with no separate proxy hostname required. Even when the build variable is missing, known OpenWego and Atomflow endpoints use the same-origin proxy instead of silently falling back to direct connections. Custom compatible endpoints use the validated Worker route (`/__opc-image/custom/v1/images/edits?target=...`); API keys are not stored in the Worker. Set `VITE_IMAGE_PROXY_URL=direct` at build time to opt out explicitly. Local `npm run dev` still calls custom endpoints directly; this feature targets the Cloudflare production deployment. The GitHub Pages CI can override this default using the build environment variable. For other static hosts, supply an appropriate proxy URL or disable the same-origin proxy.
 
 ### Optional separate image proxy
 

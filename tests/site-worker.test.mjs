@@ -84,6 +84,27 @@ test('single Worker uses same-origin OpenWego proxy', async () => {
   assert.deepEqual(requests, []);
 });
 
+test('single Worker forwards a validated custom provider using the same-origin namespace', async () => {
+  const { env, requests } = assets();
+  const target = 'https://image-api.provider.example.org/v1/images/edits';
+  const form = new FormData();
+  form.set('model', 'custom-model');
+  const response = await handleSiteRequest(
+    new Request(`${origin}/__opc-image/custom/v1/images/edits?target=${encodeURIComponent(target)}`, {
+      method: 'POST',
+      headers: { Origin: origin, Authorization: 'Bearer local-only' },
+      body: form,
+    }),
+    env,
+    async (input) => {
+      assert.equal(String(input), target);
+      return Response.json({ data: [] });
+    },
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(requests, []);
+});
+
 test('proxy namespace rejects foreign origins, unknown routes and query strings', async () => {
   const { env, requests } = assets();
   const forbidden = await handleSiteRequest(

@@ -9,7 +9,7 @@ export function atomflowRoute(endpoint: string): 'site' | 'api' | null {
     : null;
 }
 
-/** Restrict the proxy to known provider origins and one exact image-edit endpoint. */
+/** Keep known providers on fixed upstreams; other providers use a validated custom route. */
 export function imageProxyRoute(endpoint: string): 'site' | 'api' | 'openwego' | null {
   const atomflow = atomflowRoute(endpoint);
   if (atomflow) return atomflow;
@@ -22,22 +22,31 @@ export function imageProxyRoute(endpoint: string): 'site' | 'api' | 'openwego' |
     : null;
 }
 
-/** Route only fixed-destination image edits through the proxy, never arbitrary providers. */
+/**
+ * Production requests default to the same-origin Worker, including custom providers.
+ * Local Vite development proxies the known providers; custom URLs stay direct locally.
+ * Use VITE_IMAGE_PROXY_URL=direct to explicitly bypass the Worker everywhere.
+ */
 export function imageRequestEndpoint(
   endpoint: string,
   development: boolean,
   productionProxy = '',
 ): string {
-  const route = imageProxyRoute(endpoint);
-  if (!route) return endpoint;
-  if (development) return `/__opc-image/${route}/v1/images/edits`;
   const destination = productionProxy.trim();
-  // Only an explicit opt-out uses direct requests; missing/empty build variables are safe.
   if (destination === 'direct') return endpoint;
-  if (!destination || destination === '/__opc-image') return `/__opc-image/${route}/v1/images/edits`;
+
+  const route = imageProxyRoute(endpoint);
+  if (development && !route) return endpoint;
+
+  const path = route
+    ? `/${route}/v1/images/edits`
+    : `/custom/v1/images/edits?target=${encodeURIComponent(endpoint)}`;
+  if (development || !destination || destination === '/__opc-image')
+    return `/__opc-image${path}`;
+
   const proxy = new URL(destination);
   if (proxy.protocol !== 'https:' || proxy.username || proxy.password || proxy.search || proxy.hash)
     throw new Error('invalidProxyEndpoint');
   const pathname = proxy.pathname.replace(/\/+$/, '');
-  return `${proxy.origin}${pathname}/${route}/v1/images/edits`;
+  return `${proxy.origin}${pathname}${path}`;
 }

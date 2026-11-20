@@ -6,6 +6,7 @@ const ALLOWED_ORIGINS = new Set([
 const UPSTREAMS = new Map([
   ['/site/v1/images/edits', 'https://atomflow.vip/v1/images/edits'],
   ['/api/v1/images/edits', 'https://api.atomflow.vip/v1/images/edits'],
+  ['/openwego/v1/images/edits', 'https://openwego.com/v1/images/edits'],
 ]);
 
 const MAX_REQUEST_BYTES = 96 * 1024 * 1024;

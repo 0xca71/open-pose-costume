@@ -62,6 +62,28 @@ test('single Worker forwards same-origin image edits to fixed Atomflow upstream'
   assert.equal(requests.length, 0);
 });
 
+test('single Worker uses same-origin OpenWego proxy', async () => {
+  const { env, requests } = assets();
+  let destination = '';
+  const form = new FormData();
+  form.set('model', 'open-image-v2');
+  const response = await handleSiteRequest(
+    new Request(`${origin}/__opc-image/openwego/v1/images/edits`, {
+      method: 'POST',
+      headers: { Origin: origin, Authorization: 'Bearer test-only' },
+      body: form,
+    }),
+    env,
+    async (input) => {
+      destination = String(input);
+      return Response.json({ ok: true });
+    },
+  );
+  assert.equal(response.status, 200);
+  assert.equal(destination, 'https://openwego.com/v1/images/edits');
+  assert.deepEqual(requests, []);
+});
+
 test('proxy namespace rejects foreign origins, unknown routes and query strings', async () => {
   const { env, requests } = assets();
   const forbidden = await handleSiteRequest(

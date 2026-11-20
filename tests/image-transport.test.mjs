@@ -59,7 +59,7 @@ test('production transport uses the configured proxy only for exact Atomflow end
   );
   assert.equal(
     imageRequestEndpoint('https://images.example/v1/images/edits', false, proxy),
-    'https://images.example/v1/images/edits',
+    `${proxy}/custom/v1/images/edits?target=${encodeURIComponent('https://images.example/v1/images/edits')}`,
   );
   assert.equal(
     imageRequestEndpoint('https://atomflow.vip/v1/images/edits', false, 'direct'),

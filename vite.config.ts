@@ -40,16 +40,8 @@ export default defineConfig({
   server: {
     proxy: {
       '^/__opc-image/site/v1/images/edits$': imageProxy('https://atomflow.vip'),
-      '^/__opc-image/api/v1/images/edits
-    },
-  },
-});
-: imageProxy('https://api.atomflow.vip'),
-      '^/__opc-image/openwego/v1/images/edits
-    },
-  },
-});
-: imageProxy('https://openwego.com'),
+      '^/__opc-image/api/v1/images/edits$': imageProxy('https://api.atomflow.vip'),
+      '^/__opc-image/openwego/v1/images/edits$': imageProxy('https://openwego.com'),
     },
   },
 });

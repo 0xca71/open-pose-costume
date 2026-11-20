@@ -75,7 +75,7 @@
 ## 生图与隐私
 
 - 在 Cloudflare 单 Worker 部署中，OpenWego 与默认 Atomflow 的图片编辑请求均走站点同源的固定上游代理；API Key 通过请求头透传，不写入 Worker 存储。
-- 开发环境通过 Vite 转发固定服务，线上默认使用受限 Cloudflare Worker；自定义兼容接口仍由浏览器直连并需要正确的 CORS 配置。
+- 开发环境通过 Vite 转发固定服务，线上默认通过同域 Cloudflare Worker 转发 OpenWego、Atomflow 和自定义兼容图片编辑接口。自定义供应商必须是公网 HTTPS 域名，且支持 `/v1/images/edits`；受安全规则限制，不支持内网 IP、非标准端口或供应商重定向。
 - API Key 默认保存在当前浏览器的本地存储；取消“记住密钥”后只保留在当前会话，可随时清除。
 - 生成或提取服饰时，所选参考图与描述会发送到当前配置的服务；服务费用、额度与审查规则以服务方为准。
 - 生成历史通过 IndexedDB 保存在本地，最多展示最近 20 次成功结果，不包含 API Key。
@@ -131,7 +131,7 @@ npx wrangler deploy
 
 在 Cloudflare Git 集成的构建设置里，构建命令填 `npm run build`，部署命令填 `npx wrangler deploy`。不再需要 `--assets`、`--name` 或 `--compatibility-date` 参数，均由根目录配置负责。
 
-提交的 `.env.production` 将 `VITE_IMAGE_PROXY_URL` 默认设为 `/__opc-image`（同源路径）；即使构建环境未设置此变量，代码也会对 OpenWego 和固定 Atomflow 接口默认使用同源代理，不会静默退回直连。自定义兼容接口仍由浏览器直连，API Key 不存储在 Worker 中。若明确要直连，可在构建时设置 `VITE_IMAGE_PROXY_URL=direct`。GitHub Pages 的 CI 可以通过构建环境变量覆盖此默认值；如在其他静态托管环境部署，需要单独指定代理 URL 或禁用同源代理。
+提交的 `.env.production` 将 `VITE_IMAGE_PROXY_URL` 默认设为 `/__opc-image`（同源路径）；即使构建环境未设置此变量，代码也会对 OpenWego 和固定 Atomflow 接口默认使用同源代理，不会静默退回直连。自定义兼容接口也会经过 Worker 的受限动态上游路径（`/__opc-image/custom/v1/images/edits?target=...`），API Key 不存储在 Worker 中。若明确要直连，可在构建时设置 `VITE_IMAGE_PROXY_URL=direct`。本地 `npm run dev` 对自定义服务仍采用浏览器直连；本变更针对 Cloudflare 生产部署。GitHub Pages 的 CI 可以通过构建环境变量覆盖此默认值；如在其他静态托管环境部署，需要单独指定代理 URL 或禁用同源代理。
 
 ### 独立部署方式（保留供其他静态站点使用）
 

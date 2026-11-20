@@ -197,7 +197,7 @@ test('image edit request attaches both original files and keeps auth off image s
   assert.equal(calls[0].options.headers, undefined);
   assert.equal(calls[1].options.headers, undefined);
   const request = calls[2];
-  assert.equal(request.url, 'https://images.example/v1/images/edits');
+  assert.equal(request.url, `/__opc-image/custom/v1/images/edits?target=${encodeURIComponent('https://images.example/v1/images/edits')}`);
   assert.equal(request.options.headers.Authorization, `Bearer ${config.apiKey}`);
   assert.equal(request.options.headers['Content-Type'], undefined);
   assert.equal(request.options.body.getAll('image[]').length, 2);
@@ -223,7 +223,7 @@ test('OpenWego requests require authorization and omit unsupported quality param
     },
   );
   const request = calls[2];
-  assert.equal(request.url, 'https://openwego.com/v1/images/edits');
+  assert.equal(request.url, '/__opc-image/openwego/v1/images/edits');
   assert.equal(request.options.headers.Authorization, `Bearer ${openWegoConfig.apiKey}`);
   assert.equal(request.options.body.get('model'), 'open-image-v2');
   assert.equal(request.options.body.get('quality'), null);

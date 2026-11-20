@@ -121,3 +121,23 @@ test('worker streams multipart bytes to a fixed upstream without cookies', async
   assert.equal(response.headers.get('X-Oneapi-Request-Id'), 'test-request-id');
   assert.deepEqual(await response.json(), { error: { message: 'invalid test credential' } });
 });
+
+test('OpenWego routes to the fixed upstream, not an arbitrary URL', async () => {
+  const origin = 'https://open-pose-costume.example.workers.dev';
+  let destination = '';
+  const form = new FormData();
+  form.set('model', 'open-image-v2');
+  const response = await handleImageProxy(
+    new Request(`${origin}/openwego/v1/images/edits`, {
+      method: 'POST',
+      headers: { Origin: origin, Authorization: 'Bearer test-only' },
+      body: form,
+    }),
+    async (input) => {
+      destination = String(input);
+      return Response.json({ ok: true });
+    },
+  );
+  assert.equal(response.status, 200);
+  assert.equal(destination, 'https://openwego.com/v1/images/edits');
+});

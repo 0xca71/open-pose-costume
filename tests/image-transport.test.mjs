@@ -80,6 +80,20 @@ test('production transport uses the configured proxy only for exact Atomflow end
   );
 });
 
+test('custom provider routes through the same-origin Worker by default', () => {
+  const url = 'https://images.vendor.example.org/api/v1/images/edits';
+  const encoded = `/__opc-image/custom/v1/images/edits?target=${encodeURIComponent(url)}`;
+  assert.equal(imageRequestEndpoint(url, false), encoded);
+  assert.equal(imageRequestEndpoint(url, false, '/__opc-image'), encoded);
+  assert.equal(imageRequestEndpoint(url, false, 'direct'), url);
+  // The Vite development server does not yet implement the dynamic route.
+  assert.equal(imageRequestEndpoint(url, true), url);
+  assert.equal(
+    imageRequestEndpoint(url, false, 'https://proxy.example.workers.dev'),
+    `https://proxy.example.workers.dev/custom/v1/images/edits?target=${encodeURIComponent(url)}`,
+  );
+});
+
 test('local proxy preserves multipart bytes and auth, excludes cookies, and rejects foreign origins', async () => {
   const calls = [];
   const upstream = createHttpServer(async (req, res) => {

@@ -20,8 +20,16 @@ test('only the two exact Atomflow edit endpoints use the development transport',
   ]) {
     const endpoint = `https://${host}/v1/images/edits`;
     assert.equal(imageRequestEndpoint(endpoint, true), `/__opc-image/${route}/v1/images/edits`);
-    assert.equal(imageRequestEndpoint(endpoint, false), endpoint);
+    assert.equal(imageRequestEndpoint(endpoint, false), `/__opc-image/${route}/v1/images/edits`);
   }
+  assert.equal(
+    imageRequestEndpoint('https://openwego.com/v1/images/edits', false),
+    '/__opc-image/openwego/v1/images/edits',
+  );
+  assert.equal(
+    imageRequestEndpoint('https://openwego.com/v1/images/edits', true),
+    '/__opc-image/openwego/v1/images/edits',
+  );
   for (const endpoint of [
     'https://images.example/v1/images/edits',
     'https://atomflow.vip/custom/v1/images/edits',
@@ -54,8 +62,16 @@ test('production transport uses the configured proxy only for exact Atomflow end
     'https://images.example/v1/images/edits',
   );
   assert.equal(
-    imageRequestEndpoint('https://atomflow.vip/v1/images/edits', false),
+    imageRequestEndpoint('https://atomflow.vip/v1/images/edits', false, 'direct'),
     'https://atomflow.vip/v1/images/edits',
+  );
+  assert.equal(
+    imageRequestEndpoint('https://openwego.com/v1/images/edits', false, 'direct'),
+    'https://openwego.com/v1/images/edits',
+  );
+  assert.equal(
+    imageRequestEndpoint('https://openwego.com/v1/images/edits', false, proxy),
+    `${proxy}/openwego/v1/images/edits`,
   );
   assert.throws(
     () =>
